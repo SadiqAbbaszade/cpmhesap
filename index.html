@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Kazanç Hesaplama</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <h1>YouTube Kazanç Hesaplama</h1>
+        <nav>
+            <ul>
+                <li><a href="about.html" target="_blank">Hakkında</a></li>
+                <li><a href="contact.html" target="_blank">İletişim</a></li>
+                <li><a href="details.html" target="_blank">Hesaplama Detayları</a></li>
+            </ul>
+        </nav>
+        <div class="settings-icon" onclick="toggleSettings()">
+            <i class="fas fa-cog"></i>
+        </div>
+    </header>
+
+    <div class="banner">
+        <h2>Kazanç Hesaplama Aracı</h2>
+        <p>Toplam izlenme sayısı ve CPM değerini girerek tahmini kazancınızı hesaplayın.</p>
+    </div>
+
+    <div class="container">
+        <div class="currency-selector">
+            <label for="currency">Para Birimi Seçin:</label>
+            <select id="currency">
+                <option value="usd">Dolar</option>
+                <option value="try">Türk Lirası</option>
+                <option value="azn">Manat</option>
+            </select>
+        </div>
+
+        <div class="calculator">
+            <h3>Hesaplama Formu</h3>
+            <label for="views">Toplam İzlenme Sayısı:</label>
+            <input type="number" id="views" placeholder="Örn: 1000000" required>
+
+            <label for="cpm">Bin İzlenme Başına Gelir (CPM):</label>
+            <input type="number" id="cpm" placeholder="Örn: 5" required>
+
+            <button onclick="calculateEarnings()">Hesapla</button>
+            <p id="earningsResult"></p>
+            <p id="earningsConverted" style="display: none;"></p>
+            <button class="details-button" onclick="toggleDetails()">Hesaplama Detayları</button>
+            <div id="details" class="details" style="display: none;">
+                <p>Kazanç = (İzlenme Sayısı / 1000) x CPM</p>
+            </div>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel">
+            <h3>Ayarlar</h3>
+            <label for="darkModeToggle">Karanlık Mod:</label>
+            <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+            <button onclick="closeSettings()">Kapat</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
