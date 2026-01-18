@@ -1,70 +1,554 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Kazanç Hesaplama</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>YouTube Kanal Videoları (Popüler / En Son)</title>
+  <style>
+    :root{
+      --bg1:#0b1020; --bg2:#0a1530;
+      --stroke: rgba(255,255,255,.12);
+      --text:#eaf0ff; --muted:rgba(234,240,255,.72);
+      --good:#22c55e; --bad:#ef4444;
+      --shadow: 0 18px 60px rgba(0,0,0,.35);
+      --radius: 18px;
+
+      /* Form kontrol renkleri (option görünürlüğü için) */
+      --field-bg: #0e1a33;
+      --field-bg-2: #0b152c;
+      --field-text: #eaf0ff;
+      --field-muted: rgba(234,240,255,.55);
+      --focus: rgba(99,102,241,.55);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 600px at 10% 10%, rgba(99,102,241,.30), transparent 60%),
+        radial-gradient(900px 600px at 90% 20%, rgba(34,197,94,.18), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+    .wrap{max-width:980px;margin:0 auto;padding:28px 16px 56px}
+    .hero{display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; padding:18px 18px 8px;}
+    h1{margin:0;font-size:22px;letter-spacing:.2px}
+    .sub{margin:6px 0 0;color:var(--muted);font-size:14px}
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; border:1px solid var(--stroke);
+      border-radius:999px; background:rgba(255,255,255,.06);
+      font-size:13px; color:var(--muted);
+      backdrop-filter: blur(10px);
+      margin-left:10px;
+    }
+    .card{
+      margin-top:14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr 220px 180px auto;
+      gap:12px;
+      padding:16px;
+      background:rgba(0,0,0,.16);
+    }
+    @media (max-width:900px){ .controls{grid-template-columns:1fr 1fr;} }
+    @media (max-width:520px){ .controls{grid-template-columns:1fr;} }
+
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
+
+    /* Form kontrolleri (select/option okunurluğu) */
+    input, select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--field-bg), var(--field-bg-2));
+      color: var(--field-text);
+      outline:none;
+      -webkit-appearance:none;
+      appearance:none;
+    }
+    input::placeholder{color:var(--field-muted)}
+    input:focus, select:focus{
+      border-color: var(--focus);
+      box-shadow: 0 0 0 4px rgba(99,102,241,.18);
+    }
+
+    /* Select ok ikonu */
+    .selectWrap{position:relative;}
+    .selectWrap:after{
+      content:"▾";
+      position:absolute;
+      right:12px;
+      top:50%;
+      transform: translateY(-50%);
+      color: rgba(234,240,255,.75);
+      pointer-events:none;
+      font-size:14px;
+    }
+    select{padding-right:34px;}
+
+    /* Option stilleri: bazı tarayıcılarda sınırlı ama çoğunda çözer */
+    option{
+      background: #0e1a33;
+      color: #eaf0ff;
+    }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(99,102,241,.55);
+      background: linear-gradient(180deg, rgba(99,102,241,.85), rgba(99,102,241,.55));
+      color:white; font-weight:650; cursor:pointer;
+      transition: transform .05s ease, filter .15s ease;
+      user-select:none; height:42px; margin-top:22px;
+    }
+    .btn:hover{filter:brightness(1.06)}
+    .btn:active{transform: translateY(1px)}
+    .btn.secondary{
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.07);
+      color:var(--text);
+      font-weight:600;
+    }
+
+    .bar{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 16px;
+      border-top:1px solid var(--stroke);
+      background:rgba(255,255,255,.04);
+      flex-wrap:wrap;
+    }
+    .status{font-size:13px;color:var(--muted); display:flex; gap:10px; align-items:center}
+    .dot{
+      width:10px;height:10px;border-radius:99px;background:rgba(234,240,255,.25);
+      box-shadow: 0 0 0 4px rgba(234,240,255,.08);
+    }
+    .dot.good{background:rgba(34,197,94,.9); box-shadow:0 0 0 4px rgba(34,197,94,.15)}
+    .dot.bad{background:rgba(239,68,68,.9); box-shadow:0 0 0 4px rgba(239,68,68,.15)}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    .list{padding:10px 0}
+    .item{
+      display:flex; align-items:flex-start; gap:12px; justify-content:space-between;
+      padding:12px 16px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+    .item:first-child{border-top:0}
+    .meta{min-width:0}
+    .name{
+      font-weight:650; font-size:14px; line-height:1.3;
+      margin:0 0 6px;
+      overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    }
+    .link{font-size:13px; color:rgba(234,240,255,.75); word-break:break-all;}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.06);
+      border-radius:999px;
+      padding:8px 10px;
+      cursor:pointer;
+      font-size:13px;
+      text-decoration:none;
+      color: var(--text);
+    }
+    .pill:hover{background:rgba(255,255,255,.09)}
+    .small{font-size:12px;color:var(--muted)}
+    .right{display:flex; gap:10px; align-items:center}
+    .spinner{
+      width:16px;height:16px;border-radius:50%;
+      border:2px solid rgba(234,240,255,.25);
+      border-top-color: rgba(234,240,255,.90);
+      animation: spin .9s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{
+      position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.16);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      font-size:13px;
+      opacity:0; pointer-events:none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
+  </style>
 </head>
-
 <body>
-    <header>
-        <h1>YouTube Kazanç Hesaplama</h1>
-        <nav>
-            <ul>
-                <li><a href="about.html" target="_blank">Hakkında</a></li>
-                <li><a href="contact.html" target="_blank">İletişim</a></li>
-                <li><a href="details.html" target="_blank">Hesaplama Detayları</a></li>
-            </ul>
-        </nav>
-        <div class="settings-icon" onclick="toggleSettings()">
-            <i class="fas fa-cog"></i>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+          <h1>YouTube Kanal Videoları</h1>
+          <span class="badge">Popüler / En son • Başlık + Link • Kopyala</span>
         </div>
-    </header>
-
-    <div class="banner">
-        <h2>Kazanç Hesaplama Aracı</h2>
-        <p>Toplam izlenme sayısı ve CPM değerini girerek tahmini kazancınızı hesaplayın.</p>
+        <p class="sub">Kanal linkini yapıştır, sıralamayı seç, kaç tane istediğini yaz.</p>
+      </div>
+      <div class="small">Not: “En popüler” tüm videoları tarar (kanal büyükse uzun sürebilir / kota harcar).</div>
     </div>
 
-    <div class="container">
-        <div class="currency-selector">
-            <label for="currency">Para Birimi Seçin:</label>
-            <select id="currency">
-                <option value="usd">Dolar</option>
-                <option value="try">Türk Lirası</option>
-                <option value="azn">Manat</option>
+    <div class="card">
+      <div class="controls">
+        <div>
+          <label>Kanal linki</label>
+          <input id="channelUrl" placeholder="https://www.youtube.com/@KanalAdi  veya  https://www.youtube.com/channel/UC..." />
+        </div>
+
+        <div>
+          <label>Sıralama</label>
+          <div class="selectWrap">
+            <select id="mode">
+              <option value="popular">En popüler</option>
+              <option value="latest">En son</option>
             </select>
+          </div>
         </div>
 
-        <div class="calculator">
-            <h3>Hesaplama Formu</h3>
-            <label for="views">Toplam İzlenme Sayısı:</label>
-            <input type="number" id="views" placeholder="Örn: 1000000" required>
-
-            <label for="cpm">Bin İzlenme Başına Gelir (CPM):</label>
-            <input type="number" id="cpm" placeholder="Örn: 5" required>
-
-            <button onclick="calculateEarnings()">Hesapla</button>
-            <p id="earningsResult"></p>
-            <p id="earningsConverted" style="display: none;"></p>
-            <button class="details-button" onclick="toggleDetails()">Hesaplama Detayları</button>
-            <div id="details" class="details" style="display: none;">
-                <p>Kazanç = (İzlenme Sayısı / 1000) x CPM</p>
-            </div>
+        <div>
+          <label>Kaç tane?</label>
+          <input id="count" type="number" min="1" max="500" step="1" value="15" />
         </div>
 
-        <div id="settingsPanel" class="settings-panel">
-            <h3>Ayarlar</h3>
-            <label for="darkModeToggle">Karanlık Mod:</label>
-            <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
-            <button onclick="closeSettings()">Kapat</button>
+        <div>
+          <button class="btn" id="runBtn" type="button">Listele</button>
         </div>
+      </div>
+
+      <div class="bar">
+        <div class="status">
+          <span class="dot" id="dot"></span>
+          <span id="statusText">Hazır.</span>
+          <span class="right" id="busy" style="display:none;"><span class="spinner"></span><span class="small">Çalışıyor…</span></span>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="copyAllBtn" type="button" disabled>Hepsini kopyala</button>
+          <button class="btn secondary" id="copyTitlesBtn" type="button" disabled>Başlıkları kopyala</button>
+          <button class="btn secondary" id="clearBtn" type="button">Temizle</button>
+        </div>
+      </div>
+
+      <div class="list" id="out"></div>
     </div>
+  </div>
 
-    <script src="script.js"></script>
+  <div class="toast" id="toast"></div>
+
+<script>
+/* =========================
+   🔑 API KEY (BURAYA YAZ)
+   ========================= */
+const API_KEY = "AIzaSyCtw_vK-v4WFXqhoKLmimhFNHoQgJ6r48g";
+/* ========================= */
+
+const el = (id) => document.getElementById(id);
+const runBtn = el("runBtn");
+const outEl = el("out");
+const dotEl = el("dot");
+const statusEl = el("statusText");
+const busyEl = el("busy");
+const copyAllBtn = el("copyAllBtn");
+const copyTitlesBtn = el("copyTitlesBtn");
+
+let currentItems = [];
+
+runBtn.addEventListener("click", run);
+
+el("clearBtn").addEventListener("click", () => {
+  currentItems = [];
+  outEl.innerHTML = "";
+  setStatus("Hazır.", "neutral", false);
+  copyAllBtn.disabled = true;
+  copyTitlesBtn.disabled = true;
+});
+
+copyAllBtn.addEventListener("click", async () => {
+  const lines = currentItems.map(x => `${x.title}\n${x.url}`).join("\n\n");
+  await copyText(lines);
+  toast("Tüm başlık+link kopyalandı ✅");
+});
+
+copyTitlesBtn.addEventListener("click", async () => {
+  const lines = currentItems.map(x => x.title).join("\n");
+  await copyText(lines);
+  toast("Başlıklar kopyalandı ✅");
+});
+
+function setStatus(text, kind="neutral", busy=false){
+  statusEl.textContent = text;
+  busyEl.style.display = busy ? "inline-flex" : "none";
+  dotEl.className = "dot" + (kind==="good" ? " good" : kind==="bad" ? " bad" : "");
+}
+
+function toast(msg){
+  const t = el("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 1600);
+}
+
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch{
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, (c)=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+}
+
+async function run(){
+  const channelUrl = el("channelUrl").value.trim();
+  const mode = el("mode").value; // popular | latest
+  const count = clampInt(el("count").value, 1, 500, 15);
+
+  outEl.innerHTML = "";
+  currentItems = [];
+  copyAllBtn.disabled = true;
+  copyTitlesBtn.disabled = true;
+
+  if (!API_KEY || API_KEY.includes("BURAYA_")){
+    setStatus("API key kodda yok. API_KEY değişkenini doldur.", "bad", false);
+    return;
+  }
+  if (!channelUrl){
+    setStatus("Kanal linki gir.", "bad", false);
+    return;
+  }
+
+  try{
+    setStatus("Kanal ID bulunuyor…", "neutral", true);
+    const channelId = await resolveChannelId(channelUrl);
+    if (!channelId) throw new Error("Kanal ID bulunamadı.");
+
+    let items = [];
+    if (mode === "latest"){
+      setStatus("En son videolar alınıyor…", "neutral", true);
+      items = await getLatestVideos(channelId, count);
+    } else {
+      setStatus("Popüler videolar bulunuyor… (tüm videolar taranıyor)", "neutral", true);
+      items = await getTopVideosByViews_All(channelId, count);
+    }
+
+    currentItems = items.map(v => ({
+      title: v.title,
+      url: `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`
+    }));
+
+    render(currentItems);
+
+    copyAllBtn.disabled = currentItems.length === 0;
+    copyTitlesBtn.disabled = currentItems.length === 0;
+
+    setStatus(`Tamam ✅  (${currentItems.length} video)`, "good", false);
+
+  }catch(err){
+    console.error(err);
+    setStatus("Hata: " + (err?.message || String(err)), "bad", false);
+  }
+}
+
+function clampInt(v, min, max, fallback){
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, Math.floor(n)));
+}
+
+function render(items){
+  if (!items.length){
+    outEl.innerHTML = `<div class="item"><div class="meta"><div class="name">Video bulunamadı.</div></div></div>`;
+    return;
+  }
+  outEl.innerHTML = items.map((it, idx) => {
+    const safeTitle = escapeHtml(it.title);
+    const safeUrl = escapeHtml(it.url);
+    return `
+      <div class="item">
+        <div class="meta">
+          <div class="name">${idx+1}. ${safeTitle}</div>
+          <div class="link">${safeUrl}</div>
+        </div>
+        <div class="right">
+          <div class="pill" data-copy="${safeUrl}" title="Linki kopyala">🔗 Kopyala</div>
+          <a class="pill" href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="YouTube'da aç">▶ Aç</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  outEl.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await copyText(btn.getAttribute("data-copy"));
+      toast("Link kopyalandı ✅");
+    });
+  });
+}
+
+/* Kanal ID çöz */
+async function resolveChannelId(channelUrl){
+  const m = channelUrl.match(/youtube\.com\/channel\/(UC[0-9A-Za-z_-]+)/);
+  if (m?.[1]) return m[1];
+
+  const h = channelUrl.match(/youtube\.com\/@([0-9A-Za-z._-]+)/);
+  if (h?.[1]){
+    const handle = "@" + h[1];
+    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+    url.searchParams.set("part","id");
+    url.searchParams.set("forHandle", handle);
+    url.searchParams.set("key", API_KEY);
+
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "forHandle sorgusu başarısız.");
+    return data?.items?.[0]?.id || null;
+  }
+
+  // /c/... veya /user/... (yaklaşık)
+  const cleaned = channelUrl.replace(/^https?:\/\//,"").replace(/^www\./,"");
+  const path = cleaned.split("youtube.com/")[1] || cleaned;
+  const term = decodeURIComponent(path).replace(/^(c|user)\//,"").replace(/\/.*$/,"").trim();
+  if (!term) return null;
+
+  const sUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+  sUrl.searchParams.set("part","snippet");
+  sUrl.searchParams.set("type","channel");
+  sUrl.searchParams.set("maxResults","1");
+  sUrl.searchParams.set("q", term);
+  sUrl.searchParams.set("key", API_KEY);
+
+  const sRes = await fetch(sUrl);
+  const sData = await sRes.json();
+  if (!sRes.ok) throw new Error(sData?.error?.message || "search sorgusu başarısız.");
+  return sData?.items?.[0]?.snippet?.channelId || null;
+}
+
+/* EN SON */
+async function getLatestVideos(channelId, count){
+  const url = new URL("https://www.googleapis.com/youtube/v3/search");
+  url.searchParams.set("part","snippet");
+  url.searchParams.set("channelId", channelId);
+  url.searchParams.set("order","date");
+  url.searchParams.set("type","video");
+  url.searchParams.set("maxResults", String(Math.min(50, count)));
+  url.searchParams.set("key", API_KEY);
+
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "search(date) başarısız.");
+
+  // count > 50 ise sayfalama gerekir; basitçe sayfalanmış hal:
+  let items = (data.items || []).map(it => ({
+    id: it?.id?.videoId,
+    title: it?.snippet?.title || "(Başlık yok)"
+  })).filter(x => x.id);
+
+  let next = data.nextPageToken || "";
+  while (items.length < count && next){
+    const u2 = new URL(url.toString());
+    u2.searchParams.set("pageToken", next);
+    const r2 = await fetch(u2);
+    const d2 = await r2.json();
+    if (!r2.ok) throw new Error(d2?.error?.message || "search(date) sayfalama başarısız.");
+
+    items = items.concat((d2.items || []).map(it => ({
+      id: it?.id?.videoId,
+      title: it?.snippet?.title || "(Başlık yok)"
+    })).filter(x => x.id));
+
+    next = d2.nextPageToken || "";
+  }
+
+  return items.slice(0, count);
+}
+
+/* EN POPÜLER — TÜM VİDEOLARI TARAR */
+async function getTopVideosByViews_All(channelId, count){
+  const uploads = await getUploadsPlaylistId(channelId);
+
+  // 1) uploads playlist'ten TÜM video id'lerini çek
+  let next = "";
+  const ids = [];
+
+  do {
+    const plUrl = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+    plUrl.searchParams.set("part","contentDetails");
+    plUrl.searchParams.set("playlistId", uploads);
+    plUrl.searchParams.set("maxResults","50");
+    plUrl.searchParams.set("key", API_KEY);
+    if (next) plUrl.searchParams.set("pageToken", next);
+
+    const res = await fetch(plUrl);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "playlistItems başarısız.");
+
+    for (const it of (data.items || [])){
+      const vid = it?.contentDetails?.videoId;
+      if (vid) ids.push(vid);
+    }
+
+    next = data.nextPageToken || "";
+    setStatus(`Popüler: ${ids.length} video tarandı…`, "neutral", true);
+
+  } while (next);
+
+  // 2) videos ile viewCount al (50’şer batch)
+  const all = [];
+  for (let i=0;i<ids.length;i+=50){
+    const batch = ids.slice(i, i+50);
+    const vUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+    vUrl.searchParams.set("part","snippet,statistics");
+    vUrl.searchParams.set("id", batch.join(","));
+    vUrl.searchParams.set("key", API_KEY);
+
+    const res = await fetch(vUrl);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "videos başarısız.");
+
+    for (const item of (data.items || [])){
+      all.push({
+        id: item.id,
+        title: item?.snippet?.title || "(Başlık yok)",
+        views: Number(item?.statistics?.viewCount || 0)
+      });
+    }
+  }
+
+  all.sort((a,b)=> b.views - a.views);
+  return all.slice(0, count).map(x => ({ id: x.id, title: x.title }));
+}
+
+async function getUploadsPlaylistId(channelId){
+  const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+  url.searchParams.set("part","contentDetails");
+  url.searchParams.set("id", channelId);
+  url.searchParams.set("key", API_KEY);
+
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "channels(contentDetails) başarısız.");
+
+  const uploads = data?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploads) throw new Error("Uploads playlist bulunamadı.");
+  return uploads;
+}
+</script>
 </body>
-
 </html>
